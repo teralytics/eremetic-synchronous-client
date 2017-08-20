@@ -1,7 +1,6 @@
 from distutils.core import setup
 setup(
   name = 'eremetic-synchronous-client',
-  packages = ['eremetic-synchronous-client'],
   version = '0.28.0',
   description = 'A synchronous client for Eremetic',
   author = 'Stefano Baghino',
