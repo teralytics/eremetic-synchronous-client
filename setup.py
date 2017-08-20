@@ -8,6 +8,7 @@ setup(
   author_email = 'stefano@baghino.me',
   url = 'https://github.com/stefanobaghino/eremetic-synchronous-client',
   download_url = 'https://github.com/stefanobaghino/eremetic-synchronous-client/archive/0.28.0.tar.gz',
-  keywords = ['eremetic', 'mesos'],
+  keywords = 'eremetic mesos',
+  install_requires=['requests>=2.8.13'],
   classifiers = [],
 )
