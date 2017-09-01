@@ -51,3 +51,18 @@ INFO - TASK_FINISHED: "eremetic-task.232e3359-dead-babe-beef-9872ed82ba90", stat
 ```python
 (u'eremetic-task.232e3359-dead-babe-beef-9872ed82ba90', u'TASK_FINISHED')
 ```
+
+### Separate submission and task tracking
+If you wish to persist the id of the task before blocking your app to wait for it to finish,
+you can separately submit the task:
+
+```python
+task_id = request.submit('http://eremetic-url')
+```
+
+Now you can start tracking the existing task with:
+```python
+request.track('http://eremetic-url', task_id)
+```
+Using this method you can connect to a running task to wait for it to finish
+or to fetch its result if the task has completed.
