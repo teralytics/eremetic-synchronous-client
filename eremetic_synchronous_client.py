@@ -102,12 +102,36 @@ class Request:
         :param url: The base url to contact
         :param polling_wait_time: The wait time after each polling attempt
         :param failure_wait_time: The wait time to apply when a (possibly transient) failure is detected
-        :return:
+        :return: a tuple with Eremetic task id and the last status of the task
+        """
+        task_id = self.submit(url)
+        return task_id, self.track(url, task_id, polling_wait_time, failure_wait_time)
+
+    def submit(self, url):
+        """
+        Submits a task defined in the Request to Eremetic
+        :param url: HTTP endpoint of Eremetic without trailing slash
+        :return: Eremetic task id
         """
         response = requests.post('{0}/api/v1/task'.format(url), data=json.dumps(self.payload()))
         task_id = response.json()
         if task_id is None:
             raise Exception(response.reason)
+        logging.info("Successfully submitted the task to Eremetic, task id: '{}'".format(task_id))
+        return task_id
+
+    @staticmethod
+    def track(url, task_id, polling_wait_time=1, failure_wait_time=5):
+        """
+        Tracks a task within Eremetic. Blocks and begins a never-ending polling loop until the task is finished.
+        If a failure condition is detected there will be one final attempt to ensure the task has not been re-scheduled
+        by Eremetic itself.
+        :param url: HTTP endpoint of Eremetic without trailing slash
+        :param task_id: Eremetic task id to track
+        :param polling_wait_time: The wait time after each polling attempt
+        :param failure_wait_time: The wait time to apply when a (possibly transient) failure is detected
+        :return: the last status of the task
+        """
         last_status_is_failure = False
         while True:
             if last_status_is_failure:
@@ -119,21 +143,21 @@ class Request:
             sorted_stages = sorted(task_status.json()['status'], key=lambda stage: stage['time'])
             statuses = map(lambda stage: stage['status'], sorted_stages)
             if len(statuses) > 0:
-                logging.info('Task "{0}" status progression: {1}'.format(task_id, ' -> '.join(map(lambda s: s[5:], statuses))))
+                logging.debug('Task "{0}" status progression: {1}'.format(task_id, ' -> '.join(map(lambda s: s[5:], statuses))))
                 last_status = statuses[-1:][0]
                 if last_status == 'TASK_FINISHED':
                     logging.info('{1}: "{0}", status page: {2}/task/{0}'.format(task_id, last_status, url))
-                    return task_id, last_status
+                    return last_status
                 if last_status == 'TASK_FAILED' or last_status == 'TASK_KILLED':
                     if last_status_is_failure:
                         logging.info('{1}: "{0}", status page: {2}/task/{0}'.format(task_id, last_status, url))
-                        return task_id, last_status
+                        return last_status
                     else:
-                        logging.info('{1}: "{0}", one last attempt before giving up'.format(task_id, last_status))
+                        logging.debug('{1}: "{0}", one last attempt before giving up'.format(task_id, last_status))
                         last_status_is_failure = True
                 else:
                     if last_status_is_failure:
-                        logging.info('{1}: "{0}", recovery attempt detected'.format(task_id, last_status))
+                        logging.debug('{1}: "{0}", recovery attempt detected'.format(task_id, last_status))
                         last_status_is_failure = False
             else:
-                logging.info('Still not status update from task "{}"'.format(task_id))
+                logging.debug('Still not status update from task "{}"'.format(task_id))
