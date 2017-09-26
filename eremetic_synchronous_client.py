@@ -121,6 +121,16 @@ class Request:
         return task_id
 
     @staticmethod
+    def task_failed(task_state):
+        """
+        Checks for `task_state` to be terminal, but not successful (otherwise than `TASK_FINISHED`)
+        See: https://github.com/eremetic-framework/eremetic/blob/a893b393b4fefe96602d629e2e127767a1b20363/task.go#L33
+        :param task_state: Mesos task state
+        :return:
+        """
+        return task_state in {"TASK_LOST", "TASK_KILLED", "TASK_FAILED"}
+
+    @staticmethod
     def track(url, task_id, polling_wait_time=1, failure_wait_time=5):
         """
         Tracks a task within Eremetic. Blocks and begins a never-ending polling loop until the task is finished.
@@ -148,7 +158,7 @@ class Request:
                 if last_status == 'TASK_FINISHED':
                     logging.info('{1}: "{0}", status page: {2}/task/{0}'.format(task_id, last_status, url))
                     return last_status
-                if last_status == 'TASK_FAILED' or last_status == 'TASK_KILLED':
+                if Request.task_failed(last_status):
                     if last_status_is_failure:
                         logging.info('{1}: "{0}", status page: {2}/task/{0}'.format(task_id, last_status, url))
                         return last_status
