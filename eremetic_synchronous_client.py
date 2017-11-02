@@ -1,6 +1,7 @@
 import logging
 import json
 from time import sleep
+import time
 
 import requests
 
@@ -131,7 +132,17 @@ class Request:
         return task_state in {"TASK_LOST", "TASK_KILLED", "TASK_FAILED"}
 
     @staticmethod
-    def track(url, task_id, polling_wait_time=1, failure_wait_time=5):
+    def terminate_task(url, task_id):
+        """
+        Sends the terminate task command to Eremetic
+        :param url:
+        :param task_id:
+        :return:
+        """
+        requests.post('{0}/api/v1/task/{1}/kill'.format(url, task_id))
+
+    @staticmethod
+    def track(url, task_id, polling_wait_time=1, failure_wait_time=5, queue_max_wait_time=None):
         """
         Tracks a task within Eremetic. Blocks and begins a never-ending polling loop until the task is finished.
         If a failure condition is detected there will be one final attempt to ensure the task has not been re-scheduled
@@ -140,6 +151,8 @@ class Request:
         :param task_id: Eremetic task id to track
         :param polling_wait_time: The wait time after each polling attempt
         :param failure_wait_time: The wait time to apply when a (possibly transient) failure is detected
+        :param queue_max_wait_time: Maximum time the task is allowed to be in TASK_QUEUED state.
+                                   If exceeded, the task will be cancelled and exception will be thrown.
         :return: the last status of the task
         """
         last_status_is_failure = False
@@ -169,5 +182,14 @@ class Request:
                     if last_status_is_failure:
                         logging.debug('{1}: "{0}", recovery attempt detected'.format(task_id, last_status))
                         last_status_is_failure = False
+
+                if queue_max_wait_time is not None and sorted_stages[-1:][0]['status'] == "TASK_QUEUED":
+                    queued_since = sorted_stages[-1:][0]['time']
+                    logging.debug("Task has been queued for  {}".format(time.time() - queued_since))
+                    if time.time() - queued_since > queue_max_wait_time:
+                        logging.error("Task {0} exceeded queue_max_wait_time(={1}), terminating...".format(task_id, queue_max_wait_time))
+                        Request.terminate_task(url, task_id)
+                        logging.error("Task {} was cancelled".format(task_id))
+                        return "TASK_TERMINATING"
             else:
                 logging.debug('Still not status update from task "{}"'.format(task_id))
