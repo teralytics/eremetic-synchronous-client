@@ -129,7 +129,7 @@ class Request:
         :param task_state: Mesos task state
         :return:
         """
-        return task_state in {"TASK_LOST", "TASK_KILLED", "TASK_FAILED"}
+        return task_state in {"TASK_LOST", "TASK_KILLED", "TASK_FAILED", "TASK_TERMINATING"}
 
     @staticmethod
     def terminate_task(url, task_id):
