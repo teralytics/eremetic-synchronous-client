@@ -93,7 +93,7 @@ class Request:
         return self
 
     def payload(self):
-        return {k: v for k, v in self.__payload.iteritems() if v is not None}
+        return {k: v for k, v in self.__payload.items() if v is not None}
 
     def to(self, url, polling_wait_time=1, failure_wait_time=5):
         """
@@ -164,7 +164,7 @@ class Request:
             sleep(wait_time)
             task_status = requests.get('{0}/api/v1/task/{1}'.format(url, task_id))
             sorted_stages = sorted(task_status.json()['status'], key=lambda stage: stage['time'])
-            statuses = map(lambda stage: stage['status'], sorted_stages)
+            statuses = list(map(lambda stage: stage['status'], sorted_stages))
             if len(statuses) > 0:
                 logging.debug('Task "{0}" status progression: {1}'.format(task_id, ' -> '.join(map(lambda s: s[5:], statuses))))
                 last_status = statuses[-1:][0]
